@@ -204,6 +204,31 @@ app.delete('/api/activities/:id', protect, async (req: Request, res: Response) =
     res.status(500).json({ message: "ลบไม่สำเร็จ" });
   }
 });
+app.delete('/api/activities/:id/join', protect, async (req: Request, res: Response) => {
+  const activityId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    // 1. หาและลบใบจอง (Booking)
+    const booking = await Booking.findOneAndDelete({ user: userId, activity: activityId });
+    
+    if (!booking) {
+      return res.status(400).json({ message: "คุณยังไม่ได้จองกิจกรรมนี้ครับ" });
+    }
+
+    // 2. ลดจำนวนคนลง 1 (แต่ห้ามต่ำกว่า 0)
+    const activity = await Activity.findById(activityId);
+    if (activity) {
+      activity.currentParticipants = Math.max(0, activity.currentParticipants - 1);
+      await activity.save();
+    }
+
+    res.json({ message: "ยกเลิกการจองสำเร็จครับ" });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 
 // =======================================================
 

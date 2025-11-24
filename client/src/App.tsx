@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ActivityDetail from './pages/ActivityDetail'; // <--- 1. Import มา
+import MyBookings from './pages/MyBookings';
+
 
 function App() {
   return (
@@ -14,8 +16,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
-          {/* 2. เพิ่มบรรทัดนี้ลงไป (Route แบบมี Parameter) */}
+          <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/activities/:id" element={<ActivityDetail />} />
           
         </Routes>
