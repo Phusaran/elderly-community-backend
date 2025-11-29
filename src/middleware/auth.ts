@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import User from '../models/User'; // Import User Model มาด้วย
 
-// ขยาย Type ของ Request ให้รองรับ user
+// ขยาย Type ของ Request ให้รู้จัก user
 declare global {
   namespace Express {
     interface Request {
@@ -10,20 +11,28 @@ declare global {
   }
 }
 
-export const protect = (req: Request, res: Response, next: NextFunction) => {
-  // 1. ดึง Token จาก Header
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+export const protect = async (req: Request, res: Response, next: NextFunction) => {
+  let token;
 
-  if (!token) {
-    return res.status(401).json({ message: "No token, authorization denied" });
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      // 1. ดึง Token ออกมา
+      token = req.headers.authorization.split(' ')[1];
+
+      // 2. ตรวจสอบความถูกต้องของ Token
+      const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+
+      // 3. 🔥 จุดสำคัญ: เอา ID ไปดึงข้อมูล User ตัวจริงจาก Database (จะได้รู้ Role ล่าสุด)
+      req.user = await User.findById(decoded.id).select('-password');
+
+      next(); // ผ่านไปได้
+    } catch (error) {
+      console.error(error);
+      res.status(401).json({ message: "Not authorized, token failed" });
+    }
   }
 
-  try {
-    // 2. ตรวจสอบ Token ว่าถูกต้องไหม
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    req.user = decoded;
-    next(); // ผ่านไปทำคำสั่งถัดไปได้
-  } catch (error) {
-    res.status(401).json({ message: "Token is not valid" });
+  if (!token) {
+    res.status(401).json({ message: "Not authorized, no token" });
   }
 };

@@ -41,7 +41,9 @@ const Home = () => {
         const token = localStorage.getItem('token');
         if (token) {
           const bookingsRes = await api.get('/my-bookings');
-          const myBookedIds = bookingsRes.data.map((b: any) => b.activity._id || b.activity);
+          const myBookedIds = bookingsRes.data
+          .filter((b: any) => b.activity) 
+          .map((b: any) => b.activity._id || b.activity);
           setBookedIds(myBookedIds);
         }
       } catch (error) {

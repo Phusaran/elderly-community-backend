@@ -10,6 +10,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import ActivityForm from './pages/admin/ActivityForm';
 import Marketplace from './pages/Marketplace';
 import MarketForm from './pages/MarketForm';
+import UserForm from './pages/admin/UserForm';
 
 function App() {
   return (
@@ -31,8 +32,12 @@ function App() {
           <Route path="/admin/activity/edit/:id" element={
           <AdminRoute><ActivityForm /></AdminRoute>
           } />
+          <Route path="/admin/user/edit/:id" element={
+          <AdminRoute><UserForm /></AdminRoute>
+          } />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/market/new" element={<MarketForm />} />
+          <Route path="/market/edit/:id" element={<MarketForm />} />
           </Routes>
           
       </div>

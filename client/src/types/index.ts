@@ -23,3 +23,21 @@ export interface MarketItem {
   };
   createdAt: string;
 }
+export interface CommentType { 
+  _id: string;
+  user: {
+    _id: string;
+    username: string;
+    role?: string;
+  };
+  text: string;
+  isDeleted: boolean;
+  createdAt: string;
+}
+export interface User {
+  _id: string;
+  username: string;
+  role: 'admin' | 'user';
+  phone?: string;
+  joinedAt: string;
+}

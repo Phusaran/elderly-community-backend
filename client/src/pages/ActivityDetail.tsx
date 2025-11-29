@@ -113,9 +113,10 @@ const ActivityDetail = () => {
                     <li className="flex items-center gap-3">📍 {activity.location}</li>
                     <li className="flex items-center gap-3">👥 ผู้เข้าร่วม: <b className="text-[#38a89d]">{activity.currentParticipants}</b> / {activity.maxParticipants} คน</li>
                  </ul>
-                <div className="mt-8">
+                
+              </div>
+              <div className="mt-8">
                 {activity && <CommentSection activityId={activity._id} />}
-                </div>
               </div>
             </div>
 

@@ -167,7 +167,7 @@ app.get('/api/my-bookings', protect, async (req: Request, res: Response) => {
   }
 });
 
-// ===================== 🛍️ MARKETPLACE ROUTES 🛍️ =====================
+// ===================== 🛍️ MARKETPLACE ROUTES (Admin Updated) =====================
 
 // 1. GET: ดูสินค้าทั้งหมด
 app.get('/api/market', async (req: Request, res: Response) => {
@@ -181,7 +181,18 @@ app.get('/api/market', async (req: Request, res: Response) => {
   }
 });
 
-// 2. POST: ลงขายสินค้า
+// 2. GET: ดูสินค้าชิ้นเดียว (สำหรับเอาไปโชว์ตอนกดแก้ไข)
+app.get('/api/market/:id', async (req: Request, res: Response) => {
+  try {
+    const item = await MarketItem.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "ไม่พบสินค้า" });
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 3. POST: ลงขายสินค้า
 app.post('/api/market', protect, async (req: Request, res: Response) => {
   try {
     const newItem = await MarketItem.create({
@@ -194,14 +205,40 @@ app.post('/api/market', protect, async (req: Request, res: Response) => {
   }
 });
 
-// 3. DELETE: ลบสินค้า
+// 4. PUT: แก้ไขสินค้า (เจ้าของ หรือ Admin)
+app.put('/api/market/:id', protect, async (req: Request, res: Response) => {
+  try {
+    const item = await MarketItem.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "ไม่พบสินค้า" });
+
+    // เช็คสิทธิ์
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = item.seller.toString() === req.user.id;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(401).json({ message: "ไม่มีสิทธิ์แก้ไขสินค้านี้" });
+    }
+
+    // อัปเดตข้อมูล
+    const updatedItem = await MarketItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedItem);
+
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 5. DELETE: ลบสินค้า (เจ้าของ หรือ Admin)
 app.delete('/api/market/:id', protect, async (req: Request, res: Response) => {
   try {
     const item = await MarketItem.findById(req.params.id);
     if (!item) return res.status(404).json({ message: "ไม่พบสินค้า" });
 
-    if (item.seller.toString() !== req.user.id) {
-      return res.status(401).json({ message: "คุณไม่มีสิทธิ์ลบสินค้านี้" });
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = item.seller.toString() === req.user.id;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(401).json({ message: "ไม่มีสิทธิ์ลบสินค้านี้" });
     }
 
     await item.deleteOne();
@@ -251,6 +288,122 @@ app.post('/api/activities/:id/comments', protect, async (req: Request, res: Resp
     await newComment.populate('user', 'username');
     res.status(201).json(newComment);
 
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+// 3. PUT: แก้ไขคอมเมนต์
+app.put('/api/comments/:id', protect, async (req: Request, res: Response) => {
+  const { text } = req.body;
+  try {
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ message: "ไม่พบคอมเมนต์" });
+
+    if (comment.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: "คุณไม่มีสิทธิ์แก้ไข" });
+    }
+
+    // เช็คคำหยาบ (เหมือนเดิม)
+    const allBadWords = await BadWord.find().select('word');
+    const foundBadWord = allBadWords.find(b => text.includes(b.word));
+    if (foundBadWord) {
+      return res.status(400).json({ message: `⚠️ มีคำไม่สุภาพ ("${foundBadWord.word}")` });
+    }
+
+    comment.text = text;
+    comment.isEdited = true; // <--- ✅ เพิ่มบรรทัดนี้: แปะป้ายว่าแก้แล้ว
+    
+    await comment.save();
+    res.json(comment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 4. DELETE: ลบคอมเมนต์ (Admin หรือ เจ้าของ) -> แบบ Soft Delete
+app.delete('/api/comments/:id', protect, async (req: Request, res: Response) => {
+  try {
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ message: "ไม่พบคอมเมนต์" });
+
+    // เช็คสิทธิ์: เป็นเจ้าของ หรือ เป็น Admin (ผ่าน Middleware protect มาแล้ว user จะมี role)
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = comment.user.toString() === req.user.id;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(401).json({ message: "คุณไม่มีสิทธิ์ลบ" });
+    }
+
+    // Soft Delete: แค่เปลี่ยนสถานะ ไม่ได้ลบจริง
+    comment.isDeleted = true;
+    await comment.save();
+
+    res.json({ message: "ลบข้อความแล้ว" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+// ===================== 👤 USER MANAGEMENT ROUTES (Admin) =====================
+
+// 1. GET: ดูรายชื่อสมาชิกทั้งหมด
+app.get('/api/users', protect, async (req: Request, res: Response) => {
+  try {
+    // เช็คว่าเป็น Admin ไหม?
+    if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
+
+    const users = await User.find().select('-password').sort({ joinedAt: -1 }); // ไม่ดึง password มา
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 2. GET: ดูสมาชิกคนเดียว (เอาไว้โชว์ในหน้าแก้ไข)
+app.get('/api/users/:id', protect, async (req: Request, res: Response) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
+    
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ message: "ไม่พบผู้ใช้นี้" });
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 3. PUT: แก้ไขข้อมูลสมาชิก (เช่น เปลี่ยน Role, แก้ชื่อ)
+app.put('/api/users/:id', protect, async (req: Request, res: Response) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
+
+    // ห้ามแก้ Password ผ่าน API นี้เพื่อความปลอดภัย (ควรมี API แยก)
+    const { password, ...updateData } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 4. DELETE: ลบสมาชิก (แบน)
+app.delete('/api/users/:id', protect, async (req: Request, res: Response) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
+
+    // ป้องกันการลบตัวเอง
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: "คุณไม่สามารถลบตัวเองได้" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    // ลบข้อมูลที่เกี่ยวข้องด้วย (เช่น การจอง, คอมเมนต์, ตลาด) เพื่อไม่ให้เป็นขยะ
+    await Booking.deleteMany({ user: req.params.id });
+    await MarketItem.deleteMany({ seller: req.params.id });
+    await Comment.deleteMany({ user: req.params.id });
+
+    res.json({ message: "ลบผู้ใช้และข้อมูลที่เกี่ยวข้องเรียบร้อย" });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
   }
