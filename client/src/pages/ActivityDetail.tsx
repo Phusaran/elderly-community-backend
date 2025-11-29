@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import type { Activity } from '../types';
+import CommentSection from '../components/CommentSection';
 
 const ActivityDetail = () => {
   const { id } = useParams();
@@ -112,6 +113,9 @@ const ActivityDetail = () => {
                     <li className="flex items-center gap-3">📍 {activity.location}</li>
                     <li className="flex items-center gap-3">👥 ผู้เข้าร่วม: <b className="text-[#38a89d]">{activity.currentParticipants}</b> / {activity.maxParticipants} คน</li>
                  </ul>
+                <div className="mt-8">
+                {activity && <CommentSection activityId={activity._id} />}
+                </div>
               </div>
             </div>
 

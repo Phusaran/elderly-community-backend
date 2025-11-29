@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IComment extends Document {
-  user: mongoose.Types.ObjectId;     // ใครพิมพ์
-  activity: mongoose.Types.ObjectId; // พิมพ์ในกิจกรรมไหน
-  text: string;                      // ข้อความ (ที่ผ่าน AI ตรวจแล้ว)
+  user: mongoose.Types.ObjectId;
+  activity: mongoose.Types.ObjectId;
+  text: string;
   createdAt: Date;
 }
 

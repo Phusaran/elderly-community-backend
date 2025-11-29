@@ -10,6 +10,8 @@ import User from './models/User';
 import Activity from './models/Activity';
 import Booking from './models/Booking';
 import MarketItem from './models/MarketItem'; // <--- Import MarketItem
+import Comment from './models/Comment';
+import BadWord from './models/BadWord';
 
 // Import Middleware
 import { protect } from './middleware/auth';
@@ -208,7 +210,51 @@ app.delete('/api/market/:id', protect, async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
+// ===================== COMMENT ROUTES (Filter) =====================
 
+// 1. GET: ดึงคอมเมนต์ของกิจกรรมนั้นๆ
+app.get('/api/activities/:id/comments', async (req: Request, res: Response) => {
+  try {
+    const comments = await Comment.find({ activity: req.params.id })
+      .populate('user', 'username') // ดึงชื่อคนเม้นมาด้วย
+      .sort({ createdAt: -1 });     // ใหม่สุดขึ้นก่อน
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+// 2. POST: คอมเมนต์ (พร้อมระบบกรองคำจาก DB)
+app.post('/api/activities/:id/comments', protect, async (req: Request, res: Response) => {
+  const { text } = req.body;
+  const activityId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    const allBadWords = await BadWord.find().select('word'); // ดึงมาเฉพาะ field word
+    
+    // วนลูปเช็คว่าข้อความมีคำหยาบไหม
+    const foundBadWord = allBadWords.find(b => text.includes(b.word));
+    
+    if (foundBadWord) {
+      return res.status(400).json({ 
+        message: `⚠️ ข้อความของคุณมีคำไม่สุภาพ ("${foundBadWord.word}") กรุณาแก้ไขครับ` 
+      });
+    }
+
+    // ถ้าผ่าน บันทึกลง DB
+    const newComment = await Comment.create({
+      user: userId,
+      activity: activityId,
+      text: text
+    });
+
+    await newComment.populate('user', 'username');
+    res.status(201).json(newComment);
+
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 // =================================================================
 
 // Start Server (บรรทัดสุดท้าย)
