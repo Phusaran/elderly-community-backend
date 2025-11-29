@@ -4,7 +4,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   // เช็คว่ามี Token ในเครื่องไหม (แปลว่า Login อยู่หรือเปล่า)
   const token = localStorage.getItem('token'); 
-
+  const role = localStorage.getItem('role');
   const handleLogout = () => {
     // ลบกุญแจทิ้งเพื่อออกจากระบบ
     localStorage.removeItem('token'); 
@@ -20,11 +20,18 @@ const Navbar = () => {
       <div className="flex-1">
         {/* กดโลโก้แล้วกลับหน้าแรก */}
         <Link to="/" className="btn btn-ghost normal-case text-xl text-[#f77a45] gap-2">
-          👴👵 <span className="hidden sm:inline">Elderly Community</span>
+          👴👵 <span className="hidden sm:inline">คอมมูนิตี้วัยเก๋า</span>
+        </Link>
+        <Link to="/marketplace" className="btn btn-ghost btn-sm ml-16">
+        🛍️ ตลาดนัด
         </Link>
       </div>
-      
       <div className="flex-none gap-3">
+        {role === 'admin' && (
+        <Link to="/admin/dashboard" className="btn btn-warning btn-sm text-white">
+        🛠️ จัดการระบบ
+        </Link>
+        )}
         {token ? (
           // --- กรณี Login แล้ว โชว์ปุ่มเหล่านี้ ---
           <>
